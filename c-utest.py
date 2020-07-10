@@ -1,28 +1,9 @@
 import re
 import sys
+from string import Template
 
 #Pattter that matches the function declaration
-functionPattern = re.compile('^(int|char)(\s)*(?!main)[a-zA-Z0-9]*\(.*\)(\s)*\{')
-#Pattern that matches the function return type
-returnPattern = re.compile('(int|char)')
-# Patten that matches each parameter
-parameterPattern = re.compile('(int|char)(\s)*[a-zA-Z0-9]')
-class Function():
-    def __init__(self):
-        self.returnType = ""
-        self.parameters  = [] 
-
-    def setReturnType(self, returnType):
-        self.returnType = returnType
-    
-    def setParameter(self, parameter):
-        self.parameters.append(parameter)
-    
-    def pprint(self):
-        print("Return type: " + self.returnType)
-        print("Parameter list")
-        for param in self.parameters:
-            print(param)
+functionPattern = re.compile('^(int|char)(\s)*(?!main)([a-zA-Z0-9]*)\((.*)\)(\s)*\{')
 
 # Read arguments and raise an exception if
 # number of arguments passed is not correct
@@ -40,22 +21,40 @@ def getFileFromArg():
 
     return fd
 
+def formatParameters(parameters):
+    parameters_list = []
+    if parameters!="":
+            for string in parameters.split(","):
+                parameters_list.append(string.split()[0])
+    return parameters_list
+
+# Read file line by line searching for the function regex
+# if it matches, then strip the return type and it's parameters
+# it returns the functions array
 def getFunctionsFromFile(fd):
     functions = []
     for line in fd:
         for match in re.finditer(functionPattern, line):
-            function = Function()
-            function.setReturnType(re.match(returnPattern, match.group()).group())
-            
-            for param in re.finditer(parameterPattern, match.group()):
-                function.setParameter(param.group())
-           
+            function = { 'returnType'    : match.group(1), 
+                          'funcName'      : match.group(3),
+                          'parameterType' : formatParameters(match.group(4))
+                        }
             functions.append(function)
 
     return functions
 
+
+def generateTestFromFunction(function):
+    template_file = open('templates/basic.c')
+    src = Template(template_file.read())
+    result = src.substitute(function)
+    print(result)
+    
+
+
+
 def main():
-    # Try to get the file descriptro of the 
+    # Try to get the file descriptor of the 
     # file passed by argument, if argument is not
     # correct then exit
     try:
@@ -64,8 +63,9 @@ def main():
         print("Error: Incorrect number of arguments")
         sys.exit()
 
+    # Iterrate over all functions objects finded in the file
     for function in getFunctionsFromFile(fd):
-        function.pprint()
+        generateTestFromFunction(function)
     
 if __name__=='__main__':
     main()
